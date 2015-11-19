@@ -81,21 +81,20 @@ impl Worker {
         let messages = try!(self.connections[token].readable());
 
         for message in messages {
-            let post = match Post::from_bytes(message) {
+            let post = match Post::from_bytes(&message) {
                 Err(e) => {
                     error!("Invalid message: {}", e);
                     continue;
                 },
                 Ok(post) => post
             };
-            if post.text.len() > 0 && post.text.starts_with("/") {
-                self.shell.send(Task {
-                    user: post.author,
-                    cmd: post.text[1..].to_string(),
+            match post.command() {
+                Some(cmd) => self.shell.send(Task {
+                    user: post.take().0,
+                    cmd: cmd,
                     reply_to: event_loop.channel(),
-                }).unwrap_or_else(|e| error!("failed to execute command {}", e))
-            } else {
-                self.broadcast(event_loop, post);
+                }).unwrap_or_else(|e| error!("failed to execute command {}", e)),
+                None => self.broadcast(event_loop, post),
             }
         }
         Ok(())
@@ -192,10 +191,7 @@ impl mio::Handler for Worker {
                 self.accept(event_loop, sock)
             }
             Message::TaskFinished { user, result } => {
-                let post = Post {
-                    author: user,
-                    text: result
-                };
+                let post = Post::new(user, result);
                 self.broadcast(event_loop, post)
             }
             Message::NewPost(post) => self.broadcast_local(event_loop, &post.into_bytes())

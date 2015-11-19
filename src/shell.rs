@@ -33,9 +33,11 @@ pub fn start() -> mpsc::Sender<Task> {
     return tx;
 }
 
-pub fn exec(cmd: &str) -> String {
-    match Command::new(cmd).output() {
+pub fn exec(cmd: &str) -> Vec<String> {
+    let text = match Command::new(cmd).output() {
         Err(e) => format!("Command {} failed: {}", cmd, e),
         Ok(Output {stdout, .. }) => String::from_utf8_lossy(&stdout).to_string()
-    }
+    };
+
+    text.lines().map(|s| s.to_string()).collect::<Vec<_>>()
 }

@@ -28,10 +28,10 @@ impl Chunker {
 
                 self.len_buffer.push(byte);
 
-                if self.len_buffer.len() == 8 {
+                if self.len_buffer.len() == 4 {
                     let mut len_buffer = Vec::new();
                     swap(&mut self.len_buffer, &mut len_buffer);
-                    self.msg_len = io::Cursor::new(len_buffer).read_u64::<LittleEndian>().unwrap() as usize;
+                    self.msg_len = io::Cursor::new(len_buffer).read_u32::<LittleEndian>().unwrap() as usize;
                     self.is_reading_length = false
                 }
 
