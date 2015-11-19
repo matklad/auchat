@@ -9,6 +9,8 @@ use mio::util::Slab;
 
 use Message;
 use shell::Task;
+use chunker::Chunker;
+use post::Post;
 
 
 pub struct Worker {
@@ -72,29 +74,18 @@ impl Worker {
                 event_loop: &mut EventLoop,
                 token: Token)
                 -> io::Result<()> {
-        let message = try!(self.connections[token].readable());
+        let messages = try!(self.connections[token].readable());
 
-        if message.remaining() == message.capacity() {
-            return Ok(());
-        }
-        let message = message.bytes();
-        if message.len() > 0 && message[0] == b'/' {
-            let cmd = String::from_utf8_lossy(&message[1..]);
-            let cmd = cmd.trim();
-            let task = Task {
-                cmd: cmd.to_string(),
-                reply_to: event_loop.channel(),
+        for message in messages {
+            let post = match Post::from_bytes(message) {
+                Err(e) => {
+                    error!("Invalid message: {}", e);
+                    continue;
+                },
+                Ok(post) => post
             };
-            if let Err(e) = self.shell.send(task) {
-                error!("Failed to send task to shell, {:?}", e);
-            }
-        } else {
-            let mut resp = Vec::new();
-            resp.extend(b"worker ");
-            resp.extend(self.id.to_string().into_bytes());
-            resp.extend(b": ");
-            resp.extend(message);
 
+            let resp = post.into_bytes();
             self.broadcast(event_loop, &resp);
         }
         Ok(())
@@ -193,6 +184,7 @@ struct Connection {
     token: mio::Token,
     interest: EventSet,
     send_queue: Vec<ByteBuf>,
+    chunker: Chunker,
 }
 
 impl Connection {
@@ -202,6 +194,7 @@ impl Connection {
             token: token,
             interest: EventSet::hup(),
             send_queue: Vec::new(),
+            chunker: Chunker::new(),
         }
     }
 
@@ -238,7 +231,7 @@ impl Connection {
         Ok(())
     }
 
-    fn readable(&mut self) -> io::Result<ByteBuf> {
+    fn readable(&mut self) -> io::Result<Vec<Vec<u8>>> {
         let mut recv_buf = ByteBuf::mut_with_capacity(2048);
 
         loop {
@@ -253,7 +246,7 @@ impl Connection {
             }
         }
 
-        Ok(recv_buf.flip())
+        Ok(self.chunker.feed(recv_buf.flip().bytes()))
     }
 
     fn writable(&mut self) -> io::Result<()> {

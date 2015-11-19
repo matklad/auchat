@@ -3,6 +3,8 @@ extern crate env_logger;
 extern crate mio;
 extern crate rustc_serialize;
 extern crate docopt;
+extern crate protobuf;
+extern crate byteorder;
 
 use std::net::SocketAddr;
 use std::str::FromStr;
@@ -14,6 +16,9 @@ use mio::tcp::{TcpListener, TcpStream};
 mod server;
 mod shell;
 mod worker;
+mod post;
+mod proto_post;
+mod chunker;
 
 use server::Server;
 use worker::Worker;
@@ -29,18 +34,19 @@ const USAGE: &'static str = "
 Mio chat
 
 Usage:
-  chat [--workers=<n_workers> --addr=<host_port>]
+  chat [--workers=<n_workers> --addr=<host:port>]
   chat (-h | --help)
 
 Options:
   -w, --workers=<n_workers>   Number of worker threads.
+  --addr=<host:port>          Port to listen [default: 0.0.0.0:9292]
   -h, --help                  Show this screen.
 ";
 
 #[derive(Debug, RustcDecodable)]
 struct Args {
     flag_workers: usize,
-    flag_addr: Option<String>
+    flag_addr: String
 }
 
 
@@ -52,8 +58,7 @@ pub fn main() {
         .unwrap_or_else(|e| e.exit());
 
     let n_workers = max(args.flag_workers, 1);
-    let addr = args.flag_addr.unwrap_or("0.0.0.0:8000".to_owned());
-
+    let addr = args.flag_addr;
 
     let addr: SocketAddr = FromStr::from_str(&addr)
         .ok().expect("Failed to parse host:port string");
