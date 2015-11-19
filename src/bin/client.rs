@@ -105,7 +105,7 @@ fn writer(mut sock: net::TcpStream, login: String) {
         match line {
             Ok(line) => {
                 let message = Post::new(login.clone(), vec![line]);
-                if let Err(e) = write_message(&mut sock, message) {
+                if let Err(e) = write_message(&mut sock, &message) {
                     println!("Failed to deliver the message: {}", e);
                     break;
                 }
@@ -115,8 +115,8 @@ fn writer(mut sock: net::TcpStream, login: String) {
     }
 }
 
-fn write_message(sock: &mut net::TcpStream, msg: Post) -> io::Result<()> {
-    try!(sock.write_all(&msg.into_bytes()));
+fn write_message(sock: &mut net::TcpStream, msg: &Post) -> io::Result<()> {
+    try!(sock.write_all(&msg.to_bytes()));
     Ok(())
 }
 

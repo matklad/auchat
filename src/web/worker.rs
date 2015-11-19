@@ -31,7 +31,7 @@ impl Worker {
         Worker {
             id: id,
             token: Token(worker_token),
-            connections: Slab::new_starting_at(Token(worker_token + 1), 10_000_000),
+            connections: Slab::new_starting_at(Token(worker_token + 1), 1000),
             shell: shell,
             peers: peers,
         }
@@ -106,7 +106,7 @@ impl Worker {
                 error!("cannot forward post to peer, {:?}", e);
             }
         }
-        let bytes = post.into_bytes();
+        let bytes = post.to_bytes();
         self.broadcast_local(event_loop, &bytes)
     }
 
@@ -194,8 +194,7 @@ impl mio::Handler for Worker {
                 let post = Post::new(user, result);
                 self.broadcast(event_loop, post)
             }
-            Message::NewPost(post) => self.broadcast_local(event_loop, &post.into_bytes())
+            Message::NewPost(post) => self.broadcast_local(event_loop, &post.to_bytes())
         }
     }
 }
-

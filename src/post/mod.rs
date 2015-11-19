@@ -19,8 +19,8 @@ impl Post {
         Post(proto)
     }
 
-    pub fn into_bytes(self) -> Vec<u8> {
-        let Post(proto) = self;
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let ref proto = self.0;
         let proto = proto.write_to_bytes().unwrap();
         let mut result = Vec::new();
         result.write_u32::<LittleEndian>(proto.len() as u32).unwrap();
