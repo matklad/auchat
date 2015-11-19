@@ -18,13 +18,14 @@ pub struct Worker {
     token: Token,
     connections: Slab<Connection>,
     shell: mpsc::Sender<Task>,
+    peers: Vec<mio::Sender<Message>>,
 }
 
 type EventLoop = mio::EventLoop<Worker>;
 
 
 impl Worker {
-    fn new(id: usize, shell: mpsc::Sender<Task>) -> Worker {
+    fn new(id: usize, shell: mpsc::Sender<Task>, peers: Vec<mio::Sender<Message>>) -> Worker {
         assert!(id > 0);
         let worker_token = 100 * id - 1;
         Worker {
@@ -32,27 +33,30 @@ impl Worker {
             token: Token(worker_token),
             connections: Slab::new_starting_at(Token(worker_token + 1), 10_000_000),
             shell: shell,
+            peers: peers,
         }
     }
 
     pub fn start(n_workers: usize, shell: &mpsc::Sender<Task>)
                  -> Vec<mio::Sender<Message>> {
         assert!(n_workers > 0, "Need at least one worker");
-        let mut result = Vec::new();
+        let loops = (0..n_workers)
+                .map(|_| EventLoop::new().ok().expect("Failed to crate a worker"))
+                .collect::<Vec<_>>();
+        let chans = loops.iter().map(|l| l.channel()).collect::<Vec<_>>();
 
-        for id in 0..n_workers {
-            let mut event_loop = EventLoop::new()
-            .ok().expect("Failed to crate a worker");
-            result.push(event_loop.channel());
+        for (id, mut l) in loops.into_iter().enumerate() {
+            let peers = (0..n_workers)
+                .filter(|&i| i != id).map(|i| chans[i].clone()).collect();
             let shell = shell.clone();
             thread::spawn(move || {
-                let mut w = Worker::new(id + 1, shell);
-                event_loop.run(&mut w)
+                l.run(&mut Worker::new(id + 1, shell, peers))
                 .ok().expect("Failed to start a worker event loop");
             });
+
         }
 
-        result
+        chans
     }
 
     fn accept(&mut self, event_loop: &mut EventLoop, sock: TcpStream) {
@@ -91,13 +95,23 @@ impl Worker {
                     reply_to: event_loop.channel(),
                 }).unwrap_or_else(|e| error!("failed to execute command {}", e))
             } else {
-                self.broadcast(event_loop, &post.into_bytes());
+                self.broadcast(event_loop, post);
             }
         }
         Ok(())
     }
 
-    fn broadcast(&mut self, event_loop: &mut EventLoop, message: &[u8]) {
+    fn broadcast(&mut self, event_loop: &mut EventLoop, post: Post) {
+        for p in self.peers.iter() {
+            if let Err(e) = p.send(Message::NewPost(post.clone())) {
+                error!("cannot forward post to peer, {:?}", e);
+            }
+        }
+        let bytes = post.into_bytes();
+        self.broadcast_local(event_loop, &bytes)
+    }
+
+    fn broadcast_local(&mut self, event_loop: &mut EventLoop, message: &[u8]) {
         let mut bad_tokens = Vec::new();
         for conn in self.connections.iter_mut() {
             let buf = ByteBuf::from_slice(&message);
@@ -113,6 +127,8 @@ impl Worker {
             self.reset_connection(t);
         }
     }
+
+
 
     fn reset_connection(&mut self, token: Token) {
         info!("reset connection {:?}", token);
@@ -175,13 +191,14 @@ impl mio::Handler for Worker {
             Message::NewConnection(sock) => {
                 self.accept(event_loop, sock)
             }
-            Message::TaskFinished{ user, result } => {
+            Message::TaskFinished { user, result } => {
                 let post = Post {
                     author: user,
                     text: result
                 };
-                self.broadcast(event_loop, &post.into_bytes())
+                self.broadcast(event_loop, post)
             }
+            Message::NewPost(post) => self.broadcast_local(event_loop, &post.into_bytes())
         }
     }
 }

@@ -28,6 +28,7 @@ pub enum Message {
         user: String,
         result: String,
     },
+    NewPost(post::Post),
 }
 
 const USAGE: &'static str = "

@@ -7,6 +7,7 @@ mod proto_message;
 
 use self::proto_message::Message as ProtoMessage;
 
+#[derive(Debug, Clone)]
 pub struct Post {
     pub author: String,
     pub text: String,
