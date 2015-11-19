@@ -8,7 +8,7 @@ use std::io::{self, BufRead, Write, Read};
 use std::str::FromStr;
 use std::thread;
 
-use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian};
+use byteorder::{ReadBytesExt, LittleEndian};
 
 use chat::post::Post;
 

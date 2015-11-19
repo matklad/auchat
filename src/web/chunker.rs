@@ -1,6 +1,8 @@
 use std::io;
 use std::mem::swap;
 
+use mio::buf::{Buf, ByteBuf};
+
 use byteorder::{ReadBytesExt, LittleEndian};
 
 
@@ -21,9 +23,9 @@ impl Chunker {
         }
     }
 
-    pub fn feed(&mut self, buf: &[u8]) -> Vec<Vec<u8>> {
+    pub fn feed(&mut self, buf: ByteBuf) -> Vec<Vec<u8>> {
         let mut result = Vec::new();
-        for &byte in buf {
+        for &byte in buf.bytes() {
             if self.is_reading_length {
 
                 self.len_buffer.push(byte);

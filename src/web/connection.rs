@@ -2,7 +2,7 @@ use std::io::{self, Error, ErrorKind};
 
 use mio::{self, Token, EventSet, PollOpt, TryRead, TryWrite};
 use mio::tcp::*;
-use mio::buf::{ByteBuf, Buf};
+use mio::buf::ByteBuf;
 
 use super::chunker::Chunker;
 use super::worker::Worker;
@@ -77,7 +77,7 @@ impl Connection {
             }
         }
 
-        Ok(self.chunker.feed(recv_buf.flip().bytes()))
+        Ok(self.chunker.feed(recv_buf.flip()))
     }
 
     pub fn writable(&mut self) -> io::Result<()> {
