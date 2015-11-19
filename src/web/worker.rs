@@ -1,16 +1,16 @@
-use std::io::{self, Error, ErrorKind};
+use std::io;
 use std::thread;
 use std::sync::mpsc;
 
-use mio::{self, Token, EventSet, PollOpt, TryRead, TryWrite};
-use mio::tcp::*;
-use mio::buf::{ByteBuf, Buf};
+use mio::{self, Token, EventSet};
+use mio::tcp::TcpStream;
+use mio::buf::ByteBuf;
 use mio::util::Slab;
 
 use Message;
 use shell::Task;
-use chunker::Chunker;
 use post::Post;
+use super::connection::Connection;
 
 
 pub struct Worker {
@@ -30,7 +30,7 @@ impl Worker {
         Worker {
             id: id,
             token: Token(worker_token),
-            connections: Slab::new_starting_at(Token(worker_token + 1), 1024),
+            connections: Slab::new_starting_at(Token(worker_token + 1), 10_000_000),
             shell: shell,
         }
     }
@@ -98,12 +98,10 @@ impl Worker {
             conn.send_message(buf)
                 .and_then(|_| conn.reregister(event_loop))
                 .unwrap_or_else(|e| {
-                    error!("Failed to echo message for {:?}: {:?}", conn.token, e);
+                    error!("Failed to send message for {:?}: {:?}", conn.token, e);
                     bad_tokens.push(conn.token);
                 });
-
         }
-
 
         for t in bad_tokens {
             self.reset_connection(t);
@@ -115,7 +113,6 @@ impl Worker {
         self.connections.remove(token);
     }
 }
-
 
 
 impl mio::Handler for Worker {
@@ -176,106 +173,6 @@ impl mio::Handler for Worker {
                 self.broadcast(event_loop, &result.into_bytes())
             }
         }
-    }
-}
-
-struct Connection {
-    socket: TcpStream,
-    token: mio::Token,
-    interest: EventSet,
-    send_queue: Vec<ByteBuf>,
-    chunker: Chunker,
-}
-
-impl Connection {
-    fn new(socket: TcpStream, token: mio::Token) -> Connection {
-        Connection {
-            socket: socket,
-            token: token,
-            interest: EventSet::hup(),
-            send_queue: Vec::new(),
-            chunker: Chunker::new(),
-        }
-    }
-
-    fn register(&mut self, event_loop: &mut EventLoop) -> io::Result<()> {
-        self.interest.insert(EventSet::readable());
-
-        event_loop.register_opt(
-            &self.socket,
-            self.token,
-            self.interest,
-            PollOpt::edge() | PollOpt::oneshot()
-        ).or_else(|e| {
-            error!("Failed to register {:?}, {:?}", self.token, e);
-            Err(e)
-        })
-    }
-
-    fn reregister(&mut self, event_loop: &mut EventLoop) -> io::Result<()> {
-        event_loop.reregister(
-            &self.socket,
-            self.token,
-            self.interest,
-            PollOpt::edge() | PollOpt::oneshot()
-        ).or_else(|e| {
-            error!("Failed to reregister {:?}, {:?}", self.token, e);
-            Err(e)
-        })
-    }
-
-
-    fn send_message(&mut self, message: ByteBuf) -> io::Result<()> {
-        self.send_queue.push(message);
-        self.interest.insert(EventSet::writable());
-        Ok(())
-    }
-
-    fn readable(&mut self) -> io::Result<Vec<Vec<u8>>> {
-        let mut recv_buf = ByteBuf::mut_with_capacity(2048);
-
-        loop {
-            match self.socket.try_read_buf(&mut recv_buf) {
-                Ok(None) => break,
-                Ok(Some(n)) => {
-                    if n < recv_buf.capacity() {
-                        break;
-                    }
-                },
-                Err(e) => return Err(e)
-            }
-        }
-
-        Ok(self.chunker.feed(recv_buf.flip().bytes()))
-    }
-
-    fn writable(&mut self) -> io::Result<()> {
-        try!(self.send_queue.pop()
-             .ok_or(Error::new(ErrorKind::Other, "Could not pop send queue"))
-             .and_then(|mut buf| {
-                 match self.socket.try_write_buf(&mut buf) {
-                     Ok(None) => {
-                         debug!("client flushing buf");
-                         self.send_queue.push(buf);
-                         Ok(())
-                     }
-                     Ok(Some(n)) => {
-                         debug!("Wrote {} bytes for {:?}", n, self.token);
-                         Ok(())
-                     },
-                     Err(e) => {
-                         error!("Failed to send buffer for {:?}, error: {:?}",
-                                self.token, e);
-                         Err(e)
-                     }
-                 }
-             })
-        );
-        if self.send_queue.is_empty() {
-            self.interest.remove(EventSet::writable());
-        }
-
-        Ok(())
     }
 }
 

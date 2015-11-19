@@ -13,15 +13,12 @@ use std::cmp::max;
 use mio::EventLoop;
 use mio::tcp::{TcpListener, TcpStream};
 
-mod server;
 mod shell;
-mod worker;
 mod post;
-mod proto_post;
-mod chunker;
+mod web;
 
-use server::Server;
-use worker::Worker;
+use web::server::Server;
+use web::worker::Worker;
 
 
 #[derive(Debug)]

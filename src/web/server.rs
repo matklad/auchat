@@ -3,7 +3,7 @@ use std::io;
 use mio::{self, Token, EventSet, PollOpt};
 use mio::tcp::*;
 
-use super::Message;
+use Message;
 
 
 pub struct Server {
