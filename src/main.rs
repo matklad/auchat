@@ -24,7 +24,10 @@ use web::worker::Worker;
 #[derive(Debug)]
 pub enum Message {
     NewConnection(TcpStream),
-    TaskFinished(String),
+    TaskFinished {
+        user: String,
+        result: String,
+    },
 }
 
 const USAGE: &'static str = "

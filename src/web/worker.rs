@@ -84,9 +84,15 @@ impl Worker {
                 },
                 Ok(post) => post
             };
-
-            let resp = post.into_bytes();
-            self.broadcast(event_loop, &resp);
+            if post.text.len() > 0 && post.text.starts_with("/") {
+                self.shell.send(Task {
+                    user: post.login,
+                    cmd: post.text[1..].to_string(),
+                    reply_to: event_loop.channel(),
+                }).unwrap_or_else(|e| error!("failed to execute command {}", e))
+            } else {
+                self.broadcast(event_loop, &post.into_bytes());
+            }
         }
         Ok(())
     }
@@ -169,8 +175,12 @@ impl mio::Handler for Worker {
             Message::NewConnection(sock) => {
                 self.accept(event_loop, sock)
             }
-            Message::TaskFinished(result) => {
-                self.broadcast(event_loop, &result.into_bytes())
+            Message::TaskFinished{ user, result } => {
+                let post = Post {
+                    login: user,
+                    text: result
+                };
+                self.broadcast(event_loop, &post.into_bytes())
             }
         }
     }

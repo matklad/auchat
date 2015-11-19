@@ -7,6 +7,7 @@ use mio;
 use super::Message;
 
 pub struct Task {
+    pub user: String,
     pub cmd: String,
     pub reply_to: mio::Sender<Message>
 }
@@ -17,8 +18,11 @@ pub fn start() -> mpsc::Sender<Task> {
        loop {
            match rx.recv() {
                Err(e) => error!("Failed to receive shell message: {:?}", e),
-               Ok(Task {cmd, reply_to} ) => {
-                   let msg = Message::TaskFinished(exec(&cmd));
+               Ok(Task {user, cmd, reply_to} ) => {
+                   let msg = Message::TaskFinished {
+                       user: user,
+                       result: exec(&cmd)
+                   };
                    if let Err(e) = reply_to.send(msg) {
                        error!("Failed to deliver shell message: {:?}", e)
                    }
