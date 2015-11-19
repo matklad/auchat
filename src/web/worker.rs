@@ -86,7 +86,7 @@ impl Worker {
             };
             if post.text.len() > 0 && post.text.starts_with("/") {
                 self.shell.send(Task {
-                    user: post.login,
+                    user: post.author,
                     cmd: post.text[1..].to_string(),
                     reply_to: event_loop.channel(),
                 }).unwrap_or_else(|e| error!("failed to execute command {}", e))
@@ -177,7 +177,7 @@ impl mio::Handler for Worker {
             }
             Message::TaskFinished{ user, result } => {
                 let post = Post {
-                    login: user,
+                    author: user,
                     text: result
                 };
                 self.broadcast(event_loop, &post.into_bytes())

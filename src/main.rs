@@ -39,7 +39,7 @@ Usage:
 
 Options:
   -w, --workers=<n_workers>   Number of worker threads.
-  --addr=<host:port>          Port to listen [default: 0.0.0.0:9292]
+  --addr=<host:port>          Port to listen [default: 0.0.0.0:20053]
   -h, --help                  Show this screen.
 ";
 

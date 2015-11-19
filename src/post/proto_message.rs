@@ -11,29 +11,29 @@ use protobuf::Message as Message_imported_for_functions;
 use protobuf::ProtobufEnum as ProtobufEnum_imported_for_functions;
 
 #[derive(Clone,Default)]
-pub struct Post {
+pub struct Message {
     // message fields
-    login: ::protobuf::SingularField<::std::string::String>,
+    author: ::protobuf::SingularField<::std::string::String>,
     text: ::protobuf::SingularField<::std::string::String>,
     // special fields
     unknown_fields: ::protobuf::UnknownFields,
     cached_size: ::std::cell::Cell<u32>,
 }
 
-impl Post {
-    pub fn new() -> Post {
+impl Message {
+    pub fn new() -> Message {
         ::std::default::Default::default()
     }
 
-    pub fn default_instance() -> &'static Post {
-        static mut instance: ::protobuf::lazy::Lazy<Post> = ::protobuf::lazy::Lazy {
+    pub fn default_instance() -> &'static Message {
+        static mut instance: ::protobuf::lazy::Lazy<Message> = ::protobuf::lazy::Lazy {
             lock: ::protobuf::lazy::ONCE_INIT,
-            ptr: 0 as *const Post,
+            ptr: 0 as *const Message,
         };
         unsafe {
             instance.get(|| {
-                Post {
-                    login: ::protobuf::SingularField::none(),
+                Message {
+                    author: ::protobuf::SingularField::none(),
                     text: ::protobuf::SingularField::none(),
                     unknown_fields: ::protobuf::UnknownFields::new(),
                     cached_size: ::std::cell::Cell::new(0),
@@ -42,37 +42,37 @@ impl Post {
         }
     }
 
-    // required string login = 1;
+    // required string author = 1;
 
-    pub fn clear_login(&mut self) {
-        self.login.clear();
+    pub fn clear_author(&mut self) {
+        self.author.clear();
     }
 
-    pub fn has_login(&self) -> bool {
-        self.login.is_some()
+    pub fn has_author(&self) -> bool {
+        self.author.is_some()
     }
 
     // Param is passed by value, moved
-    pub fn set_login(&mut self, v: ::std::string::String) {
-        self.login = ::protobuf::SingularField::some(v);
+    pub fn set_author(&mut self, v: ::std::string::String) {
+        self.author = ::protobuf::SingularField::some(v);
     }
 
     // Mutable pointer to the field.
     // If field is not initialized, it is initialized with default value first.
-    pub fn mut_login<'a>(&'a mut self) -> &'a mut ::std::string::String {
-        if self.login.is_none() {
-            self.login.set_default();
+    pub fn mut_author<'a>(&'a mut self) -> &'a mut ::std::string::String {
+        if self.author.is_none() {
+            self.author.set_default();
         };
-        self.login.as_mut().unwrap()
+        self.author.as_mut().unwrap()
     }
 
     // Take field
-    pub fn take_login(&mut self) -> ::std::string::String {
-        self.login.take().unwrap_or_else(|| ::std::string::String::new())
+    pub fn take_author(&mut self) -> ::std::string::String {
+        self.author.take().unwrap_or_else(|| ::std::string::String::new())
     }
 
-    pub fn get_login<'a>(&'a self) -> &'a str {
-        match self.login.as_ref() {
+    pub fn get_author<'a>(&'a self) -> &'a str {
+        match self.author.as_ref() {
             Some(v) => &v,
             None => "",
         }
@@ -115,9 +115,9 @@ impl Post {
     }
 }
 
-impl ::protobuf::Message for Post {
+impl ::protobuf::Message for Message {
     fn is_initialized(&self) -> bool {
-        if self.login.is_none() {
+        if self.author.is_none() {
             return false;
         };
         if self.text.is_none() {
@@ -134,7 +134,7 @@ impl ::protobuf::Message for Post {
                     if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
                         return ::std::result::Result::Err(::protobuf::ProtobufError::WireError("unexpected wire type".to_string()));
                     };
-                    let tmp = self.login.set_default();
+                    let tmp = self.author.set_default();
                     try!(is.read_string_into(tmp))
                 },
                 2 => {
@@ -157,7 +157,7 @@ impl ::protobuf::Message for Post {
     #[allow(unused_variables)]
     fn compute_size(&self) -> u32 {
         let mut my_size = 0;
-        for value in self.login.iter() {
+        for value in self.author.iter() {
             my_size += ::protobuf::rt::string_size(1, &value);
         };
         for value in self.text.iter() {
@@ -169,7 +169,7 @@ impl ::protobuf::Message for Post {
     }
 
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream) -> ::protobuf::ProtobufResult<()> {
-        if let Some(v) = self.login.as_ref() {
+        if let Some(v) = self.author.as_ref() {
             try!(os.write_string(1, &v));
         };
         if let Some(v) = self.text.as_ref() {
@@ -192,7 +192,7 @@ impl ::protobuf::Message for Post {
     }
 
     fn type_id(&self) -> ::std::any::TypeId {
-        ::std::any::TypeId::of::<Post>()
+        ::std::any::TypeId::of::<Message>()
     }
 
     fn as_any(&self) -> &::std::any::Any {
@@ -204,12 +204,12 @@ impl ::protobuf::Message for Post {
     }
 }
 
-impl ::protobuf::MessageStatic for Post {
-    fn new() -> Post {
-        Post::new()
+impl ::protobuf::MessageStatic for Message {
+    fn new() -> Message {
+        Message::new()
     }
 
-    fn descriptor_static(_: ::std::option::Option<Post>) -> &'static ::protobuf::reflect::MessageDescriptor {
+    fn descriptor_static(_: ::std::option::Option<Message>) -> &'static ::protobuf::reflect::MessageDescriptor {
         static mut descriptor: ::protobuf::lazy::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::lazy::Lazy {
             lock: ::protobuf::lazy::ONCE_INIT,
             ptr: 0 as *const ::protobuf::reflect::MessageDescriptor,
@@ -218,17 +218,17 @@ impl ::protobuf::MessageStatic for Post {
             descriptor.get(|| {
                 let mut fields = ::std::vec::Vec::new();
                 fields.push(::protobuf::reflect::accessor::make_singular_string_accessor(
-                    "login",
-                    Post::has_login,
-                    Post::get_login,
+                    "author",
+                    Message::has_author,
+                    Message::get_author,
                 ));
                 fields.push(::protobuf::reflect::accessor::make_singular_string_accessor(
                     "text",
-                    Post::has_text,
-                    Post::get_text,
+                    Message::has_text,
+                    Message::get_text,
                 ));
-                ::protobuf::reflect::MessageDescriptor::new::<Post>(
-                    "Post",
+                ::protobuf::reflect::MessageDescriptor::new::<Message>(
+                    "Message",
                     fields,
                     file_descriptor_proto()
                 )
@@ -237,43 +237,46 @@ impl ::protobuf::MessageStatic for Post {
     }
 }
 
-impl ::protobuf::Clear for Post {
+impl ::protobuf::Clear for Message {
     fn clear(&mut self) {
-        self.clear_login();
+        self.clear_author();
         self.clear_text();
         self.unknown_fields.clear();
     }
 }
 
-impl ::std::cmp::PartialEq for Post {
-    fn eq(&self, other: &Post) -> bool {
-        self.login == other.login &&
+impl ::std::cmp::PartialEq for Message {
+    fn eq(&self, other: &Message) -> bool {
+        self.author == other.author &&
         self.text == other.text &&
         self.unknown_fields == other.unknown_fields
     }
 }
 
-impl ::std::fmt::Debug for Post {
+impl ::std::fmt::Debug for Message {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         ::protobuf::text_format::fmt(self, f)
     }
 }
 
 static file_descriptor_proto_data: &'static [u8] = &[
-    0x0a, 0x0a, 0x70, 0x6f, 0x73, 0x74, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x23, 0x0a, 0x04,
-    0x50, 0x6f, 0x73, 0x74, 0x12, 0x0d, 0x0a, 0x05, 0x6c, 0x6f, 0x67, 0x69, 0x6e, 0x18, 0x01, 0x20,
-    0x02, 0x28, 0x09, 0x12, 0x0c, 0x0a, 0x04, 0x74, 0x65, 0x78, 0x74, 0x18, 0x02, 0x20, 0x02, 0x28,
-    0x09, 0x4a, 0xaa, 0x01, 0x0a, 0x06, 0x12, 0x04, 0x00, 0x00, 0x03, 0x01, 0x0a, 0x0a, 0x0a, 0x02,
-    0x04, 0x00, 0x12, 0x04, 0x00, 0x00, 0x03, 0x01, 0x0a, 0x0a, 0x0a, 0x03, 0x04, 0x00, 0x01, 0x12,
-    0x03, 0x00, 0x08, 0x0c, 0x0a, 0x0b, 0x0a, 0x04, 0x04, 0x00, 0x02, 0x00, 0x12, 0x03, 0x01, 0x04,
-    0x1e, 0x0a, 0x0c, 0x0a, 0x05, 0x04, 0x00, 0x02, 0x00, 0x04, 0x12, 0x03, 0x01, 0x04, 0x0c, 0x0a,
-    0x0c, 0x0a, 0x05, 0x04, 0x00, 0x02, 0x00, 0x05, 0x12, 0x03, 0x01, 0x0d, 0x13, 0x0a, 0x0c, 0x0a,
-    0x05, 0x04, 0x00, 0x02, 0x00, 0x01, 0x12, 0x03, 0x01, 0x14, 0x19, 0x0a, 0x0c, 0x0a, 0x05, 0x04,
-    0x00, 0x02, 0x00, 0x03, 0x12, 0x03, 0x01, 0x1c, 0x1d, 0x0a, 0x0b, 0x0a, 0x04, 0x04, 0x00, 0x02,
-    0x01, 0x12, 0x03, 0x02, 0x04, 0x1d, 0x0a, 0x0c, 0x0a, 0x05, 0x04, 0x00, 0x02, 0x01, 0x04, 0x12,
-    0x03, 0x02, 0x04, 0x0c, 0x0a, 0x0c, 0x0a, 0x05, 0x04, 0x00, 0x02, 0x01, 0x05, 0x12, 0x03, 0x02,
-    0x0d, 0x13, 0x0a, 0x0c, 0x0a, 0x05, 0x04, 0x00, 0x02, 0x01, 0x01, 0x12, 0x03, 0x02, 0x14, 0x18,
-    0x0a, 0x0c, 0x0a, 0x05, 0x04, 0x00, 0x02, 0x01, 0x03, 0x12, 0x03, 0x02, 0x1b, 0x1c,
+    0x0a, 0x0a, 0x70, 0x6f, 0x73, 0x74, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x1e, 0x72, 0x75,
+    0x2e, 0x73, 0x70, 0x62, 0x61, 0x75, 0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x63, 0x6f, 0x6d, 0x6d,
+    0x6f, 0x6e, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x63, 0x6f, 0x6c, 0x22, 0x27, 0x0a, 0x07,
+    0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x0e, 0x0a, 0x06, 0x61, 0x75, 0x74, 0x68, 0x6f,
+    0x72, 0x18, 0x01, 0x20, 0x02, 0x28, 0x09, 0x12, 0x0c, 0x0a, 0x04, 0x74, 0x65, 0x78, 0x74, 0x18,
+    0x02, 0x20, 0x02, 0x28, 0x09, 0x4a, 0xb4, 0x01, 0x0a, 0x06, 0x12, 0x04, 0x00, 0x00, 0x05, 0x01,
+    0x0a, 0x08, 0x0a, 0x01, 0x02, 0x12, 0x03, 0x00, 0x08, 0x26, 0x0a, 0x0a, 0x0a, 0x02, 0x04, 0x00,
+    0x12, 0x04, 0x02, 0x00, 0x05, 0x01, 0x0a, 0x0a, 0x0a, 0x03, 0x04, 0x00, 0x01, 0x12, 0x03, 0x02,
+    0x08, 0x0f, 0x0a, 0x0b, 0x0a, 0x04, 0x04, 0x00, 0x02, 0x00, 0x12, 0x03, 0x03, 0x04, 0x1f, 0x0a,
+    0x0c, 0x0a, 0x05, 0x04, 0x00, 0x02, 0x00, 0x04, 0x12, 0x03, 0x03, 0x04, 0x0c, 0x0a, 0x0c, 0x0a,
+    0x05, 0x04, 0x00, 0x02, 0x00, 0x05, 0x12, 0x03, 0x03, 0x0d, 0x13, 0x0a, 0x0c, 0x0a, 0x05, 0x04,
+    0x00, 0x02, 0x00, 0x01, 0x12, 0x03, 0x03, 0x14, 0x1a, 0x0a, 0x0c, 0x0a, 0x05, 0x04, 0x00, 0x02,
+    0x00, 0x03, 0x12, 0x03, 0x03, 0x1d, 0x1e, 0x0a, 0x0b, 0x0a, 0x04, 0x04, 0x00, 0x02, 0x01, 0x12,
+    0x03, 0x04, 0x04, 0x1d, 0x0a, 0x0c, 0x0a, 0x05, 0x04, 0x00, 0x02, 0x01, 0x04, 0x12, 0x03, 0x04,
+    0x04, 0x0c, 0x0a, 0x0c, 0x0a, 0x05, 0x04, 0x00, 0x02, 0x01, 0x05, 0x12, 0x03, 0x04, 0x0d, 0x13,
+    0x0a, 0x0c, 0x0a, 0x05, 0x04, 0x00, 0x02, 0x01, 0x01, 0x12, 0x03, 0x04, 0x14, 0x18, 0x0a, 0x0c,
+    0x0a, 0x05, 0x04, 0x00, 0x02, 0x01, 0x03, 0x12, 0x03, 0x04, 0x1b, 0x1c,
 ];
 
 static mut file_descriptor_proto_lazy: ::protobuf::lazy::Lazy<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::lazy::Lazy {
