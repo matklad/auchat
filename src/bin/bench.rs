@@ -136,12 +136,14 @@ fn packed() {
     for _ in 0..n_requests / pack {
         bytes_writen += buffer.len();
         sock.write_all(&buffer).unwrap();
+
         for _ in 0..pack {
             let msg_len = sock.read_u32::<LittleEndian>().unwrap() as usize;
             bytes_recieved += 4 + msg_len;
             let mut buf = vec![0; msg_len];
             read_exact(&mut sock, &mut buf).unwrap();
         }
+
     }
     if bytes_recieved != bytes_writen {
         panic!("broken bench!");
@@ -166,11 +168,14 @@ fn requests(n_requests: u32, message_size: usize) {
 
     let mut sock = net::TcpStream::connect(&addr).unwrap();
 
-    let message = message(message_size);
+    let message = {
+        let m = message(message_size);
+        m.to_bytes()
+    };
     let mut bytes_writen = 0;
     let mut bytes_recieved = 0;
     let start = time::precise_time_s();
-    let message_len = message.to_bytes().len();
+    let message_len = message.len();
     let message_len_kb = message_len / 1024;
     let message_len_mb = message_len_kb / 1024;
     if message_len_mb == 0 {
@@ -180,7 +185,6 @@ fn requests(n_requests: u32, message_size: usize) {
     } else {
         println!("message len {} mb", message_len_mb);
     }
-    let message = message.to_bytes();
     for _ in 0..n_requests {
         bytes_writen += message.len();
         sock.write_all(&message).unwrap();

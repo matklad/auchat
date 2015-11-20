@@ -1,4 +1,4 @@
-use std::io::{self, Error, ErrorKind};
+use std::io;
 
 use mio::{self, Token, EventSet, PollOpt, TryRead, TryWrite};
 use mio::tcp::*;
@@ -82,30 +82,29 @@ impl Connection {
     }
 
     pub fn writable(&mut self) -> io::Result<()> {
-        try!(self.send_queue.pop()
-             .ok_or(Error::new(ErrorKind::Other, "Could not pop send queue"))
-             .and_then(|mut buf| {
-                 match self.socket.try_write_buf(&mut buf) {
-                     Ok(None) => {
-                         debug!("client flushing buf");
-                         self.send_queue.push(buf);
-                         Ok(())
-                     }
-                     Ok(Some(n)) => {
-                         debug!("Wrote {} bytes for {:?}", n, self.token);
-                         if buf.has_remaining() {
-                             self.send_queue.push(buf);
-                         }
-                         Ok(())
-                     },
-                     Err(e) => {
-                         error!("Failed to send buffer for {:?}, error: {:?}",
-                                self.token, e);
-                         Err(e)
-                     }
-                 }
-             })
-        );
+        debug!("queue size for {:?} is {}", self.token, self.send_queue.len());
+
+        while let Some(mut buf) = self.send_queue.pop() {
+            match self.socket.try_write_buf(&mut buf) {
+                Ok(None) => {
+                    debug!("client flushing buf");
+                    self.send_queue.push(buf);
+                    break;
+                }
+                Ok(Some(n)) => {
+                    debug!("Wrote {} bytes for {:?}", n, self.token);
+                    if buf.has_remaining() {
+                        self.send_queue.push(buf);
+                        break;
+                    }
+                },
+                Err(e) => {
+                    error!("Failed to send buffer for {:?}, error: {:?}", self.token, e);
+                    return Err(e);
+                }
+            }
+        }
+
         if self.send_queue.is_empty() {
             self.interest.remove(EventSet::writable());
         }
