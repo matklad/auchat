@@ -2,7 +2,7 @@ use std::io::{self, Error, ErrorKind};
 
 use mio::{self, Token, EventSet, PollOpt, TryRead, TryWrite};
 use mio::tcp::*;
-use mio::buf::ByteBuf;
+use mio::buf::{Buf, ByteBuf};
 
 use super::chunker::Chunker;
 use super::worker::Worker;
@@ -92,6 +92,9 @@ impl Connection {
                      }
                      Ok(Some(n)) => {
                          debug!("Wrote {} bytes for {:?}", n, self.token);
+                         if buf.has_remaining() {
+                             self.send_queue.push(buf);
+                         }
                          Ok(())
                      },
                      Err(e) => {
