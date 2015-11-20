@@ -69,6 +69,7 @@ impl Connection {
             match self.socket.try_read_buf(&mut recv_buf) {
                 Ok(None) => break,
                 Ok(Some(n)) => {
+                    debug!("Read {} bytes for {:?}", n, self.token);
                     if n < recv_buf.capacity() {
                         break;
                     }

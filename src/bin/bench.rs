@@ -18,14 +18,15 @@ const USAGE: &'static str = "
 bench
 
 Usage:
-  bench [--rps --med --large --huge --c10k]
+  bench [--rps --packed --med --large --huge --c10k]
   chat (-h | --help)
 
 Options:
-  --rps          Request per second benchmark. Single thread.
-  --med          Megabytes per second benchmark. 1k message, single thread.
-  --large        Megabytes per second benchmark. 2.7mb message, single thread.
-  --huge         Megabytes per second benchmark. 800mb message, single thread.
+  --rps          Request per second benchmark. Single connection.
+  --packed       Messages per second benchmark. Several message in packet. Single connection.
+  --med          Megabytes per second benchmark. 1k message, single connection.
+  --large        Megabytes per second benchmark. 2.7mb message, single connection.
+  --huge         Megabytes per second benchmark. 800mb message, single connection.
   --c10k         10k concurrent connections benchmark. Four threads.
   -h, --help     Show this screen.
 ";
@@ -34,6 +35,7 @@ Options:
 #[derive(Debug, RustcDecodable)]
 struct Args {
     flag_rps: bool,
+    flag_packed: bool,
     flag_med: bool,
     flag_large: bool,
     flag_huge: bool,
@@ -49,6 +51,10 @@ fn main() {
     if args.flag_rps {
         println!("rps benchmark");
         rps();
+    }
+    if args.flag_packed {
+        println!("\n\npacked benchmark");
+        packed();
     }
     if args.flag_med {
         println!("\n\nmed benchmark");
@@ -105,6 +111,50 @@ fn c10k() {
 
     println!("time {:.2} seconds", duration);
 }
+
+
+fn packed() {
+    let addr: net::SocketAddr = FromStr::from_str("0.0.0.0:20053").unwrap();
+    let n_requests = 1_000;
+    let pack = 4;
+    let mut sock = net::TcpStream::connect(&addr).unwrap();
+
+    let mut bytes_writen = 0;
+    let mut bytes_recieved = 0;
+    let start = time::precise_time_s();
+    let message = message(1).to_bytes();
+    let message_len = message.len();
+    println!("message len {} bytes", message_len);
+
+    let buffer = {
+        let mut v = Vec::with_capacity(message_len * 4);
+        for _ in 0..pack {
+            v.extend(message.iter());
+        }
+        v
+    };
+    for _ in 0..n_requests / pack {
+        bytes_writen += buffer.len();
+        sock.write_all(&buffer).unwrap();
+        for _ in 0..pack {
+            let msg_len = sock.read_u32::<LittleEndian>().unwrap() as usize;
+            bytes_recieved += 4 + msg_len;
+            let mut buf = vec![0; msg_len];
+            read_exact(&mut sock, &mut buf).unwrap();
+        }
+    }
+    if bytes_recieved != bytes_writen {
+        panic!("broken bench!");
+    }
+    let end = time::precise_time_s();
+    let duration = end - start;
+    let mb = bytes_writen / 1024 / 1024;
+    println!("Written {} megabytes", mb);
+    println!("time {:.2} seconds", duration);
+    println!("Throughput {:.2} mb/s", mb as f64 / duration);
+    println!("Throughput {:.2} messages/s", n_requests as f64 / duration);
+}
+
 
 fn rps()   { requests(100_000, 1)         }
 fn med()   { requests(100_000, 73)        }
