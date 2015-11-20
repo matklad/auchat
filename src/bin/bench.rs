@@ -49,7 +49,7 @@ fn main() {
     println!("Written {} kilobytes", mb);
     println!("time {:.2} seconds", duration);
     println!("Thoruput {:.2} mb/s", mb as f64 / duration);
-    println!("Thoruput {:.2} rps", n_requests as f64 / duration);
+    println!("Thoruput {:.2} requests/s", n_requests as f64 / duration);
 }
 
 

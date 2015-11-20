@@ -31,7 +31,7 @@ impl Worker {
         Worker {
             id: id,
             token: Token(worker_token),
-            connections: Slab::new_starting_at(Token(worker_token + 1), 1000),
+            connections: Slab::new_starting_at(Token(worker_token + 1), 100_000),
             shell: shell,
             peers: peers,
         }
