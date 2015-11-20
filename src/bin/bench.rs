@@ -2,6 +2,9 @@ extern crate byteorder;
 extern crate chat;
 extern crate time;
 extern crate simple_parallel;
+extern crate docopt;
+extern crate rustc_serialize;
+
 
 use std::net;
 use std::io::{self, Write, Read};
@@ -22,11 +25,14 @@ fn c10k() {
     let start = time::precise_time_s();
     let mut pool = simple_parallel::Pool::new(4);
     for n_cons in 0..10_000 {
-        if n_cons % 100 == 0 {
+        if n_cons % 500 == 0 {
             println!("{} concurrent connections, {:.2} seconds",
                      n_cons, time::precise_time_s() - start);
         }
         let mut sock = net::TcpStream::connect(&addr).unwrap();
+        if n_cons + 1 == 10_000 {
+            println!("c10k!");
+        }
         sock.write_all(&message.to_bytes()).unwrap();
         socks.push(sock);
         pool.for_(socks.iter_mut(), |mut sock| {
@@ -75,9 +81,41 @@ fn sequential() {
 }
 
 
+const USAGE: &'static str = "
+bench
+
+Usage:
+  bench [--seq --c10k]
+  chat (-h | --help)
+
+Options:
+  --seq          Request per second benchmark
+  --c10k         10k concurrent connections benchmark
+  -h, --help     Show this screen.
+";
+
+
+#[derive(Debug, RustcDecodable)]
+struct Args {
+    flag_seq: bool,
+    flag_c10k: bool,
+}
+
+
+
 fn main() {
-    c10k();
-//    sequential();
+    let args: Args = docopt::Docopt::new(USAGE)
+        .and_then(|d| d.options_first(true).decode())
+        .unwrap_or_else(|e| e.exit());
+    if args.flag_seq {
+        println!("seq benchmark");
+        sequential();
+    }
+    if args.flag_c10k {
+        println!("\n\nc10k benchmark");
+        c10k();
+    }
+    println!("\n\nBenchmarks finished");
 }
 
 
