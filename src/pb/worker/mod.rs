@@ -1,8 +1,8 @@
-use std::io::{self, Write};
+use std::io;
 use std::thread;
 
 use mio::{self, Token, EventSet};
-use mio::buf::ByteBuf;
+use mio::buf::{ByteBuf, Buf};
 use mio::tcp::TcpStream;
 use mio::util::Slab;
 
@@ -109,7 +109,7 @@ impl<H: ProtoHandler> Worker<H> {
         }
 
         if let Some(proto) = echo {
-            let buf = ByteBuf::from_slice(&to_bytes(&proto));
+            let buf = to_buf(&proto);
             self.connections[token].send_message(buf)
                 .and_then(|_| self.connections[token].reregister(event_loop))
                 .unwrap_or_else(|_| self.reset_connection(token));
@@ -131,16 +131,15 @@ impl<H: ProtoHandler> Worker<H> {
     }
 
     fn broadcast_local(&mut self, event_loop: &mut mio::EventLoop<Self>, proto: H::Proto) {
-        let message = to_bytes(&proto);
+        let buf = to_buf(&proto);
         let mut bad_tokens = Vec::new();
         for conn in self.connections.iter_mut() {
-            let buf = ByteBuf::from_slice(&message);
-            conn.send_message(buf)
-            .and_then(|_| conn.reregister(event_loop))
-            .unwrap_or_else(|e| {
-                error!("Failed to send message for {:?}: {:?}", conn.token, e);
-                bad_tokens.push(conn.token);
-            });
+            conn.send_message(ByteBuf::from_slice(buf.bytes()))
+                .and_then(|_| conn.reregister(event_loop))
+                .unwrap_or_else(|e| {
+                    error!("Failed to send message for {:?}: {:?}", conn.token, e);
+                    bad_tokens.push(conn.token);
+                });
         }
 
         for t in bad_tokens {
