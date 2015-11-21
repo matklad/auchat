@@ -4,13 +4,15 @@ extern crate time;
 extern crate simple_parallel;
 extern crate docopt;
 extern crate rustc_serialize;
+extern crate protobuf;
 
 
 use std::net;
 use std::io::{self, Write, Read};
 use std::str::FromStr;
 
-use byteorder::{ReadBytesExt, LittleEndian};
+
+use protobuf::stream::WithCodedInputStream;
 
 use chat::post::Post;
 
@@ -100,9 +102,7 @@ fn c10k() {
         sock.write_all(&message).unwrap();
         socks.push(sock);
         pool.for_(socks.iter_mut(), |mut sock| {
-            let msg_len = sock.read_u32::<LittleEndian>().unwrap() as usize;
-            let mut buf = vec![0; msg_len];
-            read_exact(&mut sock, &mut buf).unwrap();
+            sock_read_post(&mut sock);
         });
     }
 
@@ -120,7 +120,6 @@ fn packed() {
     let mut sock = net::TcpStream::connect(&addr).unwrap();
 
     let mut bytes_writen = 0;
-    let mut bytes_recieved = 0;
     let start = time::precise_time_s();
     let message = message(1).to_bytes();
     let message_len = message.len();
@@ -138,16 +137,11 @@ fn packed() {
         sock.write_all(&buffer).unwrap();
 
         for _ in 0..pack {
-            let msg_len = sock.read_u32::<LittleEndian>().unwrap() as usize;
-            bytes_recieved += 4 + msg_len;
-            let mut buf = vec![0; msg_len];
-            read_exact(&mut sock, &mut buf).unwrap();
+            sock_read_post(&mut sock);
         }
 
     }
-    if bytes_recieved != bytes_writen {
-        panic!("broken bench!");
-    }
+
     let end = time::precise_time_s();
     let duration = end - start;
     let mb = bytes_writen / 1024 / 1024;
@@ -173,7 +167,6 @@ fn requests(n_requests: u32, message_size: usize) {
         m.to_bytes()
     };
     let mut bytes_writen = 0;
-    let mut bytes_recieved = 0;
     let start = time::precise_time_s();
     let message_len = message.len();
     let message_len_kb = message_len / 1024;
@@ -188,14 +181,9 @@ fn requests(n_requests: u32, message_size: usize) {
     for _ in 0..n_requests {
         bytes_writen += message.len();
         sock.write_all(&message).unwrap();
-        let msg_len = sock.read_u32::<LittleEndian>().unwrap() as usize;
-        bytes_recieved += 4 + msg_len;
-        let mut buf = vec![0; msg_len];
-        read_exact(&mut sock, &mut buf).unwrap();
+        sock_read_post(&mut sock);
     }
-    if bytes_recieved != bytes_writen {
-        panic!("broken bench!");
-    }
+
     let end = time::precise_time_s();
     let duration = end - start;
     let mb = bytes_writen / 1024 / 1024;
@@ -206,6 +194,27 @@ fn requests(n_requests: u32, message_size: usize) {
 }
 
 
+fn sock_read_post(mut sock: &mut net::TcpStream) -> Post {
+    let mut l = Vec::new();
+    let mut msg_len = 0;
+    loop {
+        let mut buf = [0u8;1];
+        sock.read(&mut buf).unwrap();
+        let b = buf[0];
+        l.push(b);
+        if b.leading_zeros() > 0 {
+            msg_len = (l.with_coded_input_stream(|is| {
+                is.read_raw_varint32()
+            } )).unwrap() as usize;
+            l.truncate(0);
+            break
+        }
+    }
+
+    let mut buf = vec![0; msg_len];
+    read_exact(&mut sock, &mut buf).unwrap();
+    Post::from_bytes(&buf).unwrap()
+}
 
 
 fn read_exact(sock: &mut net::TcpStream, mut buf: &mut [u8]) -> io::Result<()> {

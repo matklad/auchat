@@ -1,7 +1,8 @@
-use std::io::{self, Write};
+use std::io;
 
-use byteorder::{LittleEndian, WriteBytesExt};
 use protobuf::{self, Message};
+
+use mio::buf::{ByteBuf, Buf};
 
 mod message;
 
@@ -40,12 +41,10 @@ impl Post {
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
-        let ref proto = self.0;
-        let proto = proto.write_to_bytes().unwrap();
-        let mut result = Vec::new();
-        result.write_u32::<LittleEndian>(proto.len() as u32).unwrap();
-        result.write(&proto).unwrap();
-        result
+        let size = self.0.compute_size();
+        let mut buf = ByteBuf::mut_with_capacity((size + 5) as usize);
+        self.0.write_length_delimited_to_writer(&mut buf).unwrap();
+        buf.flip().bytes().iter().map(|&i| i).collect()
     }
 
     pub fn from_bytes(bytes: &[u8]) -> io::Result<Post> {

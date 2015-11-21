@@ -1,20 +1,22 @@
 use std::io;
 
+use protobuf;
+
 use mio::{self, Token, EventSet, PollOpt, TryRead, TryWrite, Handler};
 use mio::buf::{Buf, ByteBuf};
 use mio::tcp::TcpStream;
 
 use super::chunker::Chunker;
 
-pub struct Connection {
+pub struct Connection<M: protobuf::MessageStatic> {
     pub token: mio::Token,
     socket: TcpStream,
     interest: EventSet,
     send_queue: Vec<ByteBuf>,
-    chunker: Chunker,
+    chunker: Chunker<M>,
 }
 
-impl Connection {
+impl<M: protobuf::MessageStatic> Connection<M> {
     pub fn new(socket: TcpStream, token: Token) -> Self {
         Connection {
             token: token,
@@ -57,7 +59,7 @@ impl Connection {
         Ok(())
     }
 
-    pub fn readable(&mut self) -> io::Result<Vec<Vec<u8>>> {
+    pub fn readable(&mut self) -> io::Result<Vec<M>> {
         let mut recv_buf = ByteBuf::mut_with_capacity(2048);
 
         loop {
@@ -72,8 +74,10 @@ impl Connection {
                 Err(e) => return Err(e)
             }
         }
-
-        Ok(self.chunker.feed(recv_buf.flip()))
+        match self.chunker.feed(recv_buf.flip()) {
+            Ok(msgs) => Ok(msgs),
+            Err(e) => Err(io::Error::new(io::ErrorKind::InvalidData , e))
+        }
     }
 
     pub fn writable(&mut self) -> io::Result<()> {

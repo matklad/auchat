@@ -21,7 +21,7 @@ pub type Workers<H> = Vec<mio::Sender<WorkerMessage<H>>>;
 pub struct Worker<H: ProtoHandler> {
     id: usize,
     handler: H,
-    connections: Slab<Connection>,
+    connections: Slab<Connection<H::Proto>>,
     peers: Workers<H>,
 }
 
@@ -80,15 +80,7 @@ impl<H: ProtoHandler> Worker<H> {
                 -> io::Result<()> {
 
         let messages = try!(self.connections[token].readable());
-        for message in messages {
-            let proto = match from_bytes::<H::Proto>(&message) {
-                Err(e) => {
-                    error!("Invalid message: {}", e);
-                    continue;
-                }
-                Ok(proto) => proto
-            };
-
+        for proto in messages {
             let mut user = User::new(token, event_loop.channel());
             self.handler.recv(&mut user, proto);
 

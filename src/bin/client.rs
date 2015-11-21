@@ -2,13 +2,14 @@ extern crate rustc_serialize;
 extern crate docopt;
 extern crate byteorder;
 extern crate chat;
+extern crate protobuf;
 
 use std::net;
 use std::io::{self, BufRead, Write, Read};
 use std::str::FromStr;
 use std::thread;
 
-use byteorder::{ReadBytesExt, LittleEndian};
+use protobuf::stream::WithCodedInputStream;
 
 use chat::post::Post;
 
@@ -70,31 +71,32 @@ fn main() {
 
 }
 
+fn sock_read_post(mut sock: &mut net::TcpStream) -> Post {
+    let mut l = Vec::new();
+    let mut msg_len = 0;
+    loop {
+        let mut buf = [0u8;1];
+        sock.read(&mut buf).unwrap();
+        let b = buf[0];
+        l.push(b);
+        if b.leading_zeros() > 0 {
+            msg_len = (l.with_coded_input_stream(|is| {
+                is.read_raw_varint32()
+            } )).unwrap() as usize;
+            l.truncate(0);
+            break
+        }
+    }
+
+    let mut buf = vec![0; msg_len];
+    read_exact(&mut sock, &mut buf).unwrap();
+    Post::from_bytes(&buf).unwrap()
+}
+
 fn reader(mut sock: net::TcpStream) {
 
     loop {
-        let msg_len = match sock.read_u32::<LittleEndian>() {
-            Ok(len) => len as usize,
-            Err(e) => {
-                println!("Failed to receive a message: {}", e);
-                break;
-            }
-        };
-
-        let mut buf = vec![0; msg_len];
-        if let Err(e) = read_exact(&mut sock, &mut buf) {
-            println!("Failed to receive a message: {}", e);
-            break;
-        }
-
-        let post = match Post::from_bytes(&buf) {
-            Ok(post) => Post::from(post),
-            Err(e) => {
-                println!("Failed to decode a message: {}", e);
-                break;
-            }
-        };
-        let (author, lines) = post.take();
+        let (author, lines) = sock_read_post(&mut sock).take();
         println!("{}: {}", author, lines.join("\n"));
     }
 }
