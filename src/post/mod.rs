@@ -5,7 +5,27 @@ use protobuf::{self, Message};
 
 mod message;
 
-use self::message::Message as ProtoMessage;
+pub use self::message::Message as ProtoMessage;
+
+
+impl ProtoMessage {
+    pub fn command(&self) -> Option<String> {
+        let text = self.get_text();
+        let preffix = "command ";
+        if text.len() > 0 && text[0].starts_with(preffix) {
+            Some(text[0][preffix.len()..].to_string())
+        } else {
+            None
+        }
+    }
+
+    pub fn from_result(result: String) -> ProtoMessage {
+        let mut proto = ProtoMessage::default();
+        proto.set_author("nobody".to_owned());
+        proto.set_text(protobuf::RepeatedField::from_vec(vec![result]));
+        proto
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Post(ProtoMessage);
