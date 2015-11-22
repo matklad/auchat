@@ -77,7 +77,6 @@ fn sock_read_post(mut sock: &mut net::TcpStream) -> Post {
 }
 
 fn reader(mut sock: net::TcpStream) {
-
     loop {
         let (author, lines) = sock_read_post(&mut sock).take();
         println!("{}: {}", author, lines.join("\n"));
@@ -89,7 +88,12 @@ fn writer(mut sock: net::TcpStream, login: String) {
     for line in stdin.lock().lines() {
         match line {
             Ok(line) => {
-                let message = Post::from_text(login.clone(), vec![line]);
+                let message = if line.starts_with("/") {
+                    Post::from_command(line[1..].to_string())
+                } else {
+                    Post::from_text(login.clone(), vec![line])
+                };
+
                 if let Err(e) = write_message(&mut sock, &message) {
                     println!("Failed to deliver the message: {}", e);
                     break;
