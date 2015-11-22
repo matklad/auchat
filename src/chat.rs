@@ -1,6 +1,6 @@
 use std::sync::mpsc;
 
-use post::ProtoMessage as Post;
+use post::Post;
 use shell::{self, Task};
 use pb;
 

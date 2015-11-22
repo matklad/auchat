@@ -6,14 +6,14 @@ use mio::{self, Token, EventSet, PollOpt, TryWrite, Handler};
 use mio::buf::{Buf, ByteBuf};
 use mio::tcp::TcpStream;
 
-use super::chunker::Chunker;
+use proto_reader::ProtoReader;
 
 pub struct Connection<M: protobuf::MessageStatic> {
     pub token: mio::Token,
     socket: TcpStream,
     interest: EventSet,
     send_queue: Vec<ByteBuf>,
-    chunker: Chunker<M>,
+    proto_reader: ProtoReader<M>,
 }
 
 impl<M: protobuf::MessageStatic> Connection<M> {
@@ -23,7 +23,7 @@ impl<M: protobuf::MessageStatic> Connection<M> {
             socket: socket,
             interest: EventSet::hup(),
             send_queue: Vec::new(),
-            chunker: Chunker::new(),
+            proto_reader: ProtoReader::new(),
         }
     }
 
@@ -60,7 +60,7 @@ impl<M: protobuf::MessageStatic> Connection<M> {
     }
 
     pub fn readable(&mut self) -> io::Result<Option<M>> {
-        match self.chunker.read(&mut self.socket) {
+        match self.proto_reader.read(&mut self.socket) {
             Ok(buf) => Ok(Some(buf)),
             Err(e) => match e.kind()  {
                 io::ErrorKind::WouldBlock => return Ok(None),

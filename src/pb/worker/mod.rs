@@ -10,7 +10,6 @@ use super::ProtoHandler;
 use super::{User, Sender, WorkerMessage};
 
 mod connection;
-mod chunker;
 mod utils;
 
 use self::utils::*;

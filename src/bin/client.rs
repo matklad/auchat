@@ -9,9 +9,8 @@ use std::io::{self, BufRead, Write, Read};
 use std::str::FromStr;
 use std::thread;
 
-use protobuf::stream::WithCodedInputStream;
-
 use chat::post::Post;
+use chat::proto_reader::ProtoReader;
 
 
 const USAGE: &'static str = "
@@ -72,25 +71,9 @@ fn main() {
 }
 
 fn sock_read_post(mut sock: &mut net::TcpStream) -> Post {
-    let mut l = Vec::new();
-    let mut msg_len = 0;
-    loop {
-        let mut buf = [0u8;1];
-        sock.read(&mut buf).unwrap();
-        let b = buf[0];
-        l.push(b);
-        if b.leading_zeros() > 0 {
-            msg_len = (l.with_coded_input_stream(|is| {
-                is.read_raw_varint32()
-            } )).unwrap() as usize;
-            l.truncate(0);
-            break
-        }
-    }
-
-    let mut buf = vec![0; msg_len];
-    read_exact(&mut sock, &mut buf).unwrap();
-    Post::from_bytes(&buf).unwrap()
+    let mut reader = ProtoReader::<Post>::new();
+    let msg = reader.read(&mut sock).unwrap();
+    msg
 }
 
 fn reader(mut sock: net::TcpStream) {
@@ -106,7 +89,7 @@ fn writer(mut sock: net::TcpStream, login: String) {
     for line in stdin.lock().lines() {
         match line {
             Ok(line) => {
-                let message = Post::new(login.clone(), vec![line]);
+                let message = Post::from_text(login.clone(), vec![line]);
                 if let Err(e) = write_message(&mut sock, &message) {
                     println!("Failed to deliver the message: {}", e);
                     break;
@@ -121,22 +104,4 @@ fn write_message(sock: &mut net::TcpStream, msg: &Post) -> io::Result<()> {
     try!(sock.write_all(&msg.to_bytes()));
     Ok(())
 }
-
-fn read_exact(sock: &mut net::TcpStream, mut buf: &mut [u8]) -> io::Result<()> {
-    while !buf.is_empty() {
-        match sock.read(buf) {
-            Ok(0) => break,
-            Ok(n) => { let tmp = buf; buf = &mut tmp[n..]; }
-            Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {}
-            Err(e) => return Err(e),
-        }
-    }
-    if !buf.is_empty() {
-        Err(io::Error::new(io::ErrorKind::InvalidData,
-                           "failed to fill whole buffer"))
-    } else {
-        Ok(())
-    }
-}
-
 

@@ -8,13 +8,11 @@ extern crate protobuf;
 
 
 use std::net;
-use std::io::{self, Write, Read};
+use std::io::{Write, Read};
 use std::str::FromStr;
 
-
-use protobuf::stream::WithCodedInputStream;
-
 use chat::post::Post;
+use chat::proto_reader::ProtoReader;
 
 const USAGE: &'static str = "
 bench
@@ -81,7 +79,7 @@ fn message(message_size: usize) -> Post {
     let text = std::iter::repeat("Hello, World!").take(message_size)
     .collect::<Vec<_>>()
     .join(" ");
-    Post::new("matklad".to_string(), vec![text.to_string()])
+    Post::from_text("matklad".to_string(), vec![text.to_string()])
 }
 
 fn c10k() {
@@ -195,41 +193,7 @@ fn requests(n_requests: u32, message_size: usize) {
 
 
 fn sock_read_post(mut sock: &mut net::TcpStream) -> Post {
-    let mut l = Vec::new();
-    let mut msg_len = 0;
-    loop {
-        let mut buf = [0u8;1];
-        sock.read(&mut buf).unwrap();
-        let b = buf[0];
-        l.push(b);
-        if b.leading_zeros() > 0 {
-            msg_len = (l.with_coded_input_stream(|is| {
-                is.read_raw_varint32()
-            } )).unwrap() as usize;
-            l.truncate(0);
-            break
-        }
-    }
-
-    let mut buf = vec![0; msg_len];
-    read_exact(&mut sock, &mut buf).unwrap();
-    Post::from_bytes(&buf).unwrap()
-}
-
-
-fn read_exact(sock: &mut net::TcpStream, mut buf: &mut [u8]) -> io::Result<()> {
-    while !buf.is_empty() {
-        match sock.read(buf) {
-            Ok(0) => break,
-            Ok(n) => { let tmp = buf; buf = &mut tmp[n..]; }
-            Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {}
-            Err(e) => return Err(e),
-        }
-    }
-    if !buf.is_empty() {
-        Err(io::Error::new(io::ErrorKind::InvalidData,
-                           "failed to fill whole buffer"))
-    } else {
-        Ok(())
-    }
+    let mut reader = ProtoReader::<Post>::new();
+    let msg = reader.read(&mut sock).unwrap();
+    msg
 }

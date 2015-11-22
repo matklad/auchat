@@ -7,6 +7,7 @@ extern crate byteorder;
 use std::net::SocketAddr;
 
 pub mod post;
+pub mod proto_reader;
 mod pb;
 mod chat;
 mod shell;

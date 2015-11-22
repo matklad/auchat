@@ -5,7 +5,7 @@ use protobuf;
 use protobuf::stream::WithCodedInputStream;
 
 
-pub struct Chunker<M: protobuf::MessageStatic> {
+pub struct ProtoReader<M: protobuf::MessageStatic> {
     is_reading_length: bool,
     len_buffer: Vec<u8>,
     msg_buffer: Vec<u8>,
@@ -13,9 +13,9 @@ pub struct Chunker<M: protobuf::MessageStatic> {
     m: PhantomData<M>,
 }
 
-impl<M: protobuf::MessageStatic> Chunker<M> {
-    pub fn new() -> Chunker<M> {
-        Chunker {
+impl<M: protobuf::MessageStatic> ProtoReader<M> {
+    pub fn new() -> ProtoReader<M> {
+        ProtoReader {
             is_reading_length: true,
             len_buffer: Vec::new(),
             msg_buffer: Vec::new(),
