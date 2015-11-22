@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
+use std::io::{self, Read};
 
-use mio::buf::{Buf, ByteBuf};
 use protobuf;
 use protobuf::stream::WithCodedInputStream;
 
@@ -8,8 +8,8 @@ use protobuf::stream::WithCodedInputStream;
 pub struct Chunker<M: protobuf::MessageStatic> {
     is_reading_length: bool,
     len_buffer: Vec<u8>,
-    msg_len: usize,
     msg_buffer: Vec<u8>,
+    msg_ptr: usize,
     m: PhantomData<M>,
 }
 
@@ -18,42 +18,45 @@ impl<M: protobuf::MessageStatic> Chunker<M> {
         Chunker {
             is_reading_length: true,
             len_buffer: Vec::new(),
-            msg_len: 0,
             msg_buffer: Vec::new(),
+            msg_ptr: 0,
             m: PhantomData,
         }
     }
 
-    pub fn feed(&mut self, buf: ByteBuf) -> protobuf::ProtobufResult<Vec<M>> {
-        let mut result = Vec::new();
-        for &byte in buf.bytes() {
+    pub fn read<R: Read>(&mut self, source: &mut R) -> io::Result<M> {
+        let mut byte = [0u8; 1];
+        loop {
             if self.is_reading_length {
-
+                try!(source.read(&mut byte));
+                let byte = byte[0];
                 self.len_buffer.push(byte);
+
                 if byte.leading_zeros() > 0 {
-                    self.msg_len = try!(self.len_buffer.with_coded_input_stream(|is| {
+                    let msg_len = match self.len_buffer.with_coded_input_stream(|is| {
                         is.read_raw_varint32()
-                    } )) as usize;
+                    }) {
+                        Ok(n) => n as usize,
+                        Err(e) => return Err(io::Error::new(io::ErrorKind::InvalidData, e))
+                    };
                     self.len_buffer.truncate(0);
                     self.is_reading_length = false;
-                } else if self.len_buffer.len() == 5 {
-                    error!("invalid message len");
+                    self.msg_buffer.resize(msg_len, 0);
+                    self.msg_ptr = 0;
                 }
-
             } else {
+                let n = try!(source.read(&mut self.msg_buffer[self.msg_ptr..]));
+                self.msg_ptr += n;
 
-                self.msg_buffer.push(byte);
-
-                if self.msg_buffer.len() == self.msg_len {
-                    let msg = try!(protobuf::parse_from_bytes::<M>(&self.msg_buffer));
-                    result.push(msg);
-
-                    self.msg_buffer.truncate(0);
+                if self.msg_ptr == self.msg_buffer.len() {
                     self.is_reading_length = true;
+
+                    return match protobuf::parse_from_bytes::<M>(&self.msg_buffer) {
+                        Ok(m) => Ok(m),
+                        Err(e) => Err(io::Error::new(io::ErrorKind::InvalidData, e))
+                    }
                 }
             }
         }
-        Ok(result)
     }
-
 }

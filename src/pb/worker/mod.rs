@@ -79,14 +79,11 @@ impl<H: ProtoHandler> Worker<H> {
                 token: Token)
                 -> io::Result<()> {
 
-        let messages = try!(self.connections[token].readable());
-        for proto in messages {
+        while let Some(msg) = try!(self.connections[token].readable()) {
             let mut user = User::new(token, event_loop.channel());
-            self.handler.recv(&mut user, proto);
-
+            self.handler.recv(&mut user, msg);
             self.perform_requests(event_loop, token, user);
         }
-
         Ok(())
     }
 

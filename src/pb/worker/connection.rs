@@ -2,7 +2,7 @@ use std::io;
 
 use protobuf;
 
-use mio::{self, Token, EventSet, PollOpt, TryRead, TryWrite, Handler};
+use mio::{self, Token, EventSet, PollOpt, TryWrite, Handler};
 use mio::buf::{Buf, ByteBuf};
 use mio::tcp::TcpStream;
 
@@ -59,24 +59,13 @@ impl<M: protobuf::MessageStatic> Connection<M> {
         Ok(())
     }
 
-    pub fn readable(&mut self) -> io::Result<Vec<M>> {
-        let mut recv_buf = ByteBuf::mut_with_capacity(2048);
-
-        loop {
-            match self.socket.try_read_buf(&mut recv_buf) {
-                Ok(None) => break,
-                Ok(Some(n)) => {
-                    debug!("Read {} bytes for {:?}", n, self.token);
-                    if n < recv_buf.capacity() {
-                        break;
-                    }
-                },
-                Err(e) => return Err(e)
+    pub fn readable(&mut self) -> io::Result<Option<M>> {
+        match self.chunker.read(&mut self.socket) {
+            Ok(buf) => Ok(Some(buf)),
+            Err(e) => match e.kind()  {
+                io::ErrorKind::WouldBlock => return Ok(None),
+                _ => return Err(e)
             }
-        }
-        match self.chunker.feed(recv_buf.flip()) {
-            Ok(msgs) => Ok(msgs),
-            Err(e) => Err(io::Error::new(io::ErrorKind::InvalidData , e))
         }
     }
 
