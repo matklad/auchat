@@ -5,6 +5,7 @@ use mio::{self, Token, EventSet};
 use mio::buf::{ByteBuf, Buf};
 use mio::tcp::TcpStream;
 use mio::util::Slab;
+use time;
 
 use super::ProtoHandler;
 use super::{User, Sender, WorkerMessage};
@@ -22,6 +23,7 @@ pub struct Worker<H: ProtoHandler> {
     handler: H,
     connections: Slab<Connection<H::Proto>>,
     peers: Workers<H>,
+    loop_end: u64
 }
 
 impl<H: ProtoHandler> Worker<H> {
@@ -33,6 +35,7 @@ impl<H: ProtoHandler> Worker<H> {
             handler: handler,
             connections: Slab::new_starting_at(Token(100 * id), 100_000),
             peers: peers,
+            loop_end: 0,
         }
     }
 
@@ -142,10 +145,11 @@ impl<H: ProtoHandler> mio::Handler for Worker<H> {
     type Message = WorkerMessage<H>;
 
     fn ready(&mut self,
-    event_loop: &mut mio::EventLoop<Self>,
-    token: Token,
-    events: EventSet) {
-
+             event_loop: &mut mio::EventLoop<Self>,
+             token: Token,
+             events: EventSet) {
+        let start = time::precise_time_ns();
+        debug!("\n\ntime since last: {} ns ", start - self.loop_end);
         debug!("events = {:?}", events);
         assert!(token != Token(0), "[BUG]: Received event for Token(0)");
 
@@ -180,7 +184,9 @@ impl<H: ProtoHandler> mio::Handler for Worker<H> {
                 self.reset_connection(token);
             });
         }
-
+        let end = time::precise_time_ns();
+        self.loop_end = end;
+        debug!("loop duration: {} ns", end - start);
     }
 
     fn notify(&mut self, event_loop: &mut mio::EventLoop<Self>, msg: Self::Message) {

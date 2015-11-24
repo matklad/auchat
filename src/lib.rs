@@ -3,6 +3,7 @@ extern crate env_logger;
 extern crate mio;
 extern crate protobuf;
 extern crate byteorder;
+extern crate time;
 
 use std::net::SocketAddr;
 
