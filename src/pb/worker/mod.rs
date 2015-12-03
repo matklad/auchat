@@ -62,6 +62,9 @@ impl<H: ProtoHandler> Worker<H> {
     }
 
     fn accept(&mut self, event_loop: &mut mio::EventLoop<Self>, sock: TcpStream) {
+        sock.set_nodelay(true).unwrap_or_else(|e|
+                                              error!("Failed to set nodelay, {:?}", e));
+
         match self.connections.insert_with(|token| Connection::new(sock, token)) {
             Some(token) => {
                 match self.connections[token].register(event_loop) {
