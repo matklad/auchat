@@ -113,7 +113,7 @@ fn c10k() {
 
 fn packed() {
     let addr: net::SocketAddr = FromStr::from_str("0.0.0.0:20053").unwrap();
-    let n_requests = 1_000;
+    let n_requests = 100_000;
     let pack = 4;
     let mut sock = net::TcpStream::connect(&addr).unwrap();
 
