@@ -41,7 +41,11 @@ impl<M: protobuf::MessageStatic> ProtoReader<M> {
                     };
                     self.len_buffer.truncate(0);
                     self.is_reading_length = false;
-                    self.msg_buffer.resize(msg_len, 0);
+                    if self.msg_buffer.len() > msg_len {
+                        self.msg_buffer.truncate(msg_len)
+                    } else {
+                        self.msg_buffer = vec![0;msg_len]
+                    }
                     self.msg_ptr = 0;
                 }
             } else {
